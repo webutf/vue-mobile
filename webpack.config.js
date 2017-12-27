@@ -5,18 +5,17 @@ const CleanWebpackPlugin = require('clean-webpack-plugin')
 
 module.exports = {
   entry: {
-    main: __dirname + './src/main.js',
-    vendor: ['vue','vue-router','axios'],
-    plugin: ['vue-ydui']
+    main: './src/main.js',
+    vendor: ['vue', 'vue-router', 'axios']
   },
   output: {
     path: __dirname + '/dist',
-    filename: 'assets/[name]-[hash].js'
+    filename: 'assets/[name]-[hash].js',
+    chunkFilename: 'assets/[id].[chunkhash].js'  //异步加载的文件
   },
 
   module: {
     rules: [
-      { test: /\.css$/, use: ['style-loader', 'css-loader'] },
       {
         test: /\.(png|svg|jpe?g|gif)$/i,
         use: [
@@ -29,16 +28,60 @@ module.exports = {
           }
         ]
       },
-      { test: /\.(woff|woff2|eot|ttf|otf)$/, use: ['file-loader'] }
+      {
+        test: /\.js$/,
+        exclude: /node_modules|vue\/dist|vue-router\/|vue-loader\/|vue-hot-reload-api\//,
+        loader: 'babel-loader'
+      },
+      {
+        test: /\.(scss|css)$/,
+        loader: ExtractTextPlugin.extract({
+          use: 'css-loader?minimize!postcss-loader!sass-loader',
+          fallback: 'style-loader'
+        })
+      },
+      { test: /\.(woff|woff2|eot|ttf|otf)$/,
+        use: {
+          loader: 'url-loader',
+          options: {
+            limit: 100000
+          }
+        }
+      }
     ]
   },
 
   plugins: [
-    new CleanWebpackPlugin(['dist']),
-    new webpack.optimize.UglifyJsPlugin(),
+    new webpack.optimize.UglifyJsPlugin({
+      beautify: false,
+      comments: false
+    }),
     new HtmlWebpackPlugin({
       template: './src/index.html'
     }),
+    new ExtractTextPlugin({
+      filename: 'style-[contenthash].css',
+      allChunks: true,
+      disable: false
+    }),
+    new webpack.optimize.CommonsChunkPlugin({
+      name: 'vendor',
+      filename:"assets/vendor.js",
+      minChunks: Infinity
+    }),
     new webpack.HotModuleReplacementPlugin()
   ]
+}
+
+if (process.env.NODE_ENV === 'production') {
+  module.exports.devtool = '#source-map'
+  module.exports.plugins.push(
+    new CleanWebpackPlugin(['dist']),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify('production')
+    }),
+    new webpack.optimize.UglifyJsPlugin({
+      compress: { warnings: false }
+    })
+  )
 }
