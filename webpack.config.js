@@ -1,3 +1,4 @@
+const path = require('path')
 const webpack = require('webpack')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
@@ -11,27 +12,20 @@ module.exports = {
   output: {
     path: __dirname + '/dist',
     filename: 'assets/[name]-[hash].js',
-    chunkFilename: 'assets/[id].[chunkhash].js'  //异步加载的文件
+    chunkFilename: 'assets/[id].[chunkhash].js'
   },
 
   module: {
     rules: [
-      {
-        test: /\.(png|svg|jpe?g|gif)$/i,
-        use: [
-          'file-loader',
-          {
-            loader: 'image-webpack-loader',
-            options: {
-              bypassOnDebug: true
-            }
-          }
-        ]
-      },
+      { test: /\.vue$/, use: 'vue-loader' },
+	    {
+        test: /\.(png|gif|jpe?g)$/, loader: 'url-loader',
+        options: { limit: 10000, name: 'assets/[name]?[hash:8].[ext]' }
+	    },
       {
         test: /\.js$/,
-        exclude: /node_modules|vue\/dist|vue-router\/|vue-loader\/|vue-hot-reload-api\//,
-        loader: 'babel-loader'
+        use: ['babel-loader?cacheDirectory'],
+        include: path.join(__dirname, 'src')
       },
       {
         test: /\.(scss|css)$/,
@@ -40,22 +34,23 @@ module.exports = {
           fallback: 'style-loader'
         })
       },
-      { test: /\.(woff|woff2|eot|ttf|otf)$/,
-        use: {
-          loader: 'url-loader',
-          options: {
-            limit: 100000
-          }
-        }
+      {
+        test: /\.(woff|woff2|eot|ttf|otf)$/,
+        loader: 'url-loader?limit=8192'
       }
     ]
   },
 
+  resolve: {
+    extensions: ['.js', '.vue', '.scss'],
+    alias: {
+      assets: path.resolve(__dirname, 'src/assets'),
+      components: path.resolve(__dirname, 'src/components'),
+      mods: path.resolve(__dirname, 'src/mods')
+    }
+  },
+
   plugins: [
-    new webpack.optimize.UglifyJsPlugin({
-      beautify: false,
-      comments: false
-    }),
     new HtmlWebpackPlugin({
       template: './src/index.html'
     }),
@@ -74,7 +69,6 @@ module.exports = {
 }
 
 if (process.env.NODE_ENV === 'production') {
-  module.exports.devtool = '#source-map'
   module.exports.plugins.push(
     new CleanWebpackPlugin(['dist']),
     new webpack.DefinePlugin({
